@@ -211,9 +211,6 @@ class EntropyPooling2D(Pooling2D):
             ksize = _get_sequence(ksize, 2, channel_index, "ksize")
             strides = _get_sequence(strides, 2, channel_index, "strides")
             paddings = op_pad(padding, value, ksize, strides)
-            # print(f"paddings {paddings}")
-            # print(f"paddings {paddings.shape}")
-            # print(f"self.built_output_shape {self.built_output_shape}")
 
             _, out_h, out_w, _ = self.built_output_shape
 
@@ -229,10 +226,7 @@ class EntropyPooling2D(Pooling2D):
                                 name=name)
 
     def op_flatten2D(self, X, pool_h, pool_w, c, out_h, out_w, paddings, stride=1, batch=64):
-        # print(f"padding {paddings}")
         X_padded = tf.pad(X, [[0, 0], paddings[0], paddings[1], [0, 0]])
-        # print(f"X_padded shape: {X_padded.get_shape()}")  # X_padded shape: (64, 11, 28, 256)
-
         windows = tf.TensorArray(tf.float32, size=out_h * out_w, dynamic_size=False, clear_after_read=False)
         i = 0
         for y in range(out_h):
@@ -248,17 +242,14 @@ class EntropyPooling2D(Pooling2D):
     def op_entr_pool(self, value, ksize, strides, paddings, batch_size, out_h, out_w, mode='high',
                      data_format="NHWC", name=None):
         inputs = value
-        pool_h = ksize[0]
-        pool_w = ksize[1]
-        stride = strides[0]
+        pool_h = ksize[1]
+        pool_w = ksize[2]
+        stride = strides[1]
         # print(f"pool h {pool_h} pool w {pool_w}") # pool h 1 pool w 2
 
         n = batch_size
         c = tf.shape(value)[3]
-        # print(f"inputs shape {inputs.shape}") # (64, 11, 28, 256)
-
         X_flat = self.op_flatten2D(inputs, pool_h, pool_w, c, out_h, out_w, paddings, stride, batch=n)
-        # print(f"X_flat shape {X_flat.shape}") #  (4480, 512)
 
         nrows = tf.shape(X_flat)[0]
         ncols = tf.shape(X_flat)[1]
@@ -293,7 +284,6 @@ class EntropyPooling2D(Pooling2D):
         c = tf.unstack(coords, axis=-1)
         coords = tf.stack([c[0], c[1], c[2], c[4], c[3]], axis=-1)
         entropy_pool = tf.gather_nd(X_flat, coords)
-        # print(f"finished pooling {entropy_pool.get_shape()}")
         return tf.transpose(entropy_pool, [2, 0, 1, 3])
 
 
@@ -413,10 +403,9 @@ class EntropyPoolLayer(tf.keras.layers.Layer):
         # print(f"n={n}, h={h}, w={w}, c={c}") # n = None, h = 98, w = 257, c = 32
         out_h = (h + 2 * padding - pool_h) // stride + 1
         out_w = (w + 2 * padding - pool_w) // stride + 1
-        # print(f"out h {out_h} out w {out_w}")
-        # print(f"out_h={out_h}, out_w={out_w}")     # out_h = 49, out_w = 128
+        #pool_h=2, pool_w=2, c=256, out_h=5, out_w=14, stride=2, padding=0, n = 64
+
         X_flat = self.flatten2(inputs, pool_h, pool_w, c, out_h, out_w, stride, padding, batch=n)
-        # print(f"Flatt X shape: {X_flat.get_shape()}")
         # nrows, ncols = [d for d in X_flat.get_shape()]
         nrows = tf.shape(X_flat)[0]
         ncols = tf.shape(X_flat)[1]
@@ -552,11 +541,3 @@ class PoolingLayerFactory():
                 pool = MaxPooling2D(pool_size=k)
             pools.append(pool)
         return pools
-#
-# |Epoch 1/3 - duration: 859.884s| - |Training cross entr: 1.42, train_acc: 0.67| |Validation cross entr: 1.075 val_acc: 0.783| |patience:3|
-# |Epoch 2/3 - duration: 793.693s| - |Training cross entr: 0.603, train_acc: 0.886| |Validation cross entr: 0.509 val_acc: 0.894| |patience:3|
-# |Epoch 3/3 - duration: 786.669s| - |Training cross entr: 0.361, train_acc: 0.927| |Validation cross entr: 0.389 val_acc: 0.907| |patience:3|
-#
-# |Epoch 1/3 - duration: 406.7s| - |Training cross entr: 1.608, train_acc: 0.604| |Validation cross entr: 1.144 val_acc: 0.758| |patience:3|
-# |Epoch 2/3 - duration: 432.316s| - |Training cross entr: 0.864, train_acc: 0.802| |Validation cross entr: 0.774 val_acc: 0.81| |patience:3|
-# |Epoch 3/3 - duration: 450.578s| - |Training cross entr: 0.623, train_acc: 0.845| |Validation cross entr: 0.615 val_acc: 0.833| |patience:3|
