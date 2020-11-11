@@ -192,8 +192,6 @@ def convert_to_audio_dataset(files: List, labels: List, should_squeeze=True):
     # audio_ds = path_ds.map(lambda x: path_to_audio(x))
     # label_ds = tf.data.Dataset.from_tensor_slices(labels)
     # return tf.data.Dataset.zip((audio_ds, label_ds))
-    print(f" audio paths type {type(files)}")
-    print(f" audio paths type {type(files[0])}")
 
     # files = tf.convert_to_tensor(files)
     # labels = tf.convert_to_tensor(labels)
@@ -240,6 +238,7 @@ def audio_to_fft(audio):
     # we need to squeeze the dimensions and then expand them again
     # after FFT
     print(f"wav shape {audio.shape}")
+    print(f"wav shape {audio.get_shape()}")
     audio = tf.squeeze(audio, axis=-1)
     fft = tf.signal.fft(
         tf.cast(tf.complex(real=audio, imag=tf.zeros_like(audio)), tf.complex64)

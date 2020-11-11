@@ -90,20 +90,23 @@ def get_noises(noise_paths):
     return noises
 
 
-def add_noise(audio, noises=None, scale=0.5, dist="uniform"):
+def add_noise(audio, noises=None, scale=0.5, dist="uniform", should_squeeze=True):
     if noises is not None:
         # Create a random tensor of the same size as audio ranging from
         # 0 to the number of noise stream samples that we have.
         if dist is "normal":
+            print("Noise from normal distribution")
             tf_rnd = tf.random.normal(
                 (tf.shape(audio)[0],), 1, noises.shape[0], dtype=tf.int32
             )
         else:
+            print("Noise from uniform distribution")
             tf_rnd = tf.random.uniform(
                 (tf.shape(audio)[0],), 0, noises.shape[0], dtype=tf.int32
             )
         noise = tf.gather(noises, tf_rnd, axis=0)
-        noise = tf.squeeze(noise)
+        if should_squeeze:
+            noise = tf.squeeze(noise)
 
         # Get the amplitude proportion between the audio and the noise
         prop = tf.math.reduce_max(audio, axis=1) / tf.math.reduce_max(noise, axis=1)

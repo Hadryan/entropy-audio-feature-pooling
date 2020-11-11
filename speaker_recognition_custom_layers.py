@@ -5,10 +5,8 @@ Date created: 14/06/2020
 Last modified: 03/07/2020
 Description: Classify speakers using Fast Fourier Transform (FFT) and a 1D Convnet.
 """
-import time
 
 import lab
-from components import EntropyPooling1D
 from models import ResidualModel, PoolingLayerFactory
 
 """
@@ -64,10 +62,10 @@ SCALE = 0.5
 BATCH_SIZE = 32
 EPOCHS = 100
 TRAIN_NOISE = True
-VAL_NOISE = False
+VAL_NOISE = True
 TEST_NOISE = False
 TASK_NAME = f"speaker_noise_train_{str(TRAIN_NOISE)[0]}_val_{str(VAL_NOISE)[0]}_test_{str(TEST_NOISE)[0]}"
-LAST_POOL = PoolingLayerFactory.AVG
+LAST_POOL = PoolingLayerFactory.ENTR
 RESBLOCK_POOL = PoolingLayerFactory.MAX
 
 
@@ -137,10 +135,10 @@ valid_ds = dt.convert_to_audio_dataset(valid_audio_paths, valid_labels, False)
 valid_ds = valid_ds.shuffle(buffer_size=BATCH_SIZE * 8, seed=SHUFFLE_SEED).batch(BATCH_SIZE)
 
 if TRAIN_NOISE:
-    train_ds = train_ds.map(lambda x, y: (noisy.add_noise(x, noises, scale=SCALE), y),
+    train_ds = train_ds.map(lambda x, y: (noisy.add_noise(x, noises, scale=SCALE, should_squeeze=False), y),
                             num_parallel_calls=tf.data.experimental.AUTOTUNE, )
 if VAL_NOISE:
-    valid_ds = valid_ds.map(lambda x, y: (noisy.add_noise(x, noises, scale=SCALE), y),
+    valid_ds = valid_ds.map(lambda x, y: (noisy.add_noise(x, noises, scale=SCALE, should_squeeze=False), y),
                             num_parallel_calls=tf.data.experimental.AUTOTUNE, )
 
 train_ds = train_ds.map(lambda x, y: (dt.audio_to_fft(x), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -161,8 +159,9 @@ _ = lab.start_training_loop(EPOCHS, model, train_ds, train_cross_entr_metric, ac
                             BATCH_SIZE, valid_ds, val_cross_entr_metric,
                             task_name=TASK_NAME,
                             exp_descr=f"{model.name}_"
-                                      f"{'lastpool_'.join(LAST_POOL)}"
-                                      f"{'resblockpool_'.join(RESBLOCK_POOL)}")
+                                      f"last_{LAST_POOL}"
+                                      f"_res_{RESBLOCK_POOL}",
+                            patience=3)
 
 """
 We get ~ 98% validation accuracy.
@@ -184,7 +183,7 @@ test_ds = test_ds.shuffle(buffer_size=BATCH_SIZE * 8, seed=SHUFFLE_SEED).batch(
     BATCH_SIZE
 )
 
-test_ds = test_ds.map(lambda x, y: (noisy.add_noise(x, noises, scale=SCALE), y))
+test_ds = test_ds.map(lambda x, y: (noisy.add_noise(x, noises, scale=SCALE, should_squeeze=False), y))
 
 for audios, labels in test_ds.take(1):
     # Get the signal FFT
