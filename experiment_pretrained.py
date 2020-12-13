@@ -8,14 +8,14 @@ from models import AlexNet, PoolingLayerFactory
 BATCH_SIZE = 64
 PREFETCH = 10 * BATCH_SIZE
 SHUFFLE_SEED = 43
-SCALE = 2
+SCALE = 0.25
 TRAIN_NOISE = False
 VAL_NOISE = False
-TEST_NOISE = False
+TEST_NOISE = True
 TASK_NAME = f"commands_noise_train_{str(TRAIN_NOISE)[0]}_val_{str(VAL_NOISE)[0]}_test_{str(TEST_NOISE)[0]}"
-POOLING_OPS = [PoolingLayerFactory.ENTR,
-               PoolingLayerFactory.ENTR,
+POOLING_OPS = [PoolingLayerFactory.MAX,
                PoolingLayerFactory.MAX,
+               PoolingLayerFactory.ENTR,
                PoolingLayerFactory.MAX]
 EPOCHS = 3
 
@@ -36,17 +36,17 @@ def prepare_data(batch_size, train_noise, val_noise, test_noise):
         noise_paths = noisykit.get_list_of_noise_paths()
         noisykit.resample_noise_samples()
         noise_files = noisykit.get_noises(noise_paths)
-    if train_noise and noise_files:
+    if train_noise:
         train_dataset = train_dataset.map(
             lambda x, y: (noisykit.add_noise(x, noise_files, scale=SCALE), y),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
-    if val_noise and noise_files:
+    if val_noise:
         val_dataset = val_dataset.map(
             lambda x, y: (noisykit.add_noise(x, noise_files, scale=SCALE), y),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
-    if test_noise and noise_files:
+    if test_noise:
         test_dataset = test_dataset.map(
             lambda x, y: (noisykit.add_noise(x, noise_files, scale=SCALE), y),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
@@ -88,19 +88,24 @@ model.build((BATCH_SIZE, *dim))
 print(f"Class name: {model.name}")
 # tf.keras.utils.plot_model(model.build_graph(), to_file="alexnetstyle.png", show_shapes=True, show_layer_names=False)
 # print("Model saved as png!")
-model_metadata, model_save_folder = lab.start_training_loop(EPOCHS, model, train_dataset, train_cross_entr_metric,
-                                                            acc_metric, loss_op,
-                                                            optimizer,
-                                                            BATCH_SIZE, val_dataset, val_cross_entr_metric,
-                                                            task_name=TASK_NAME,
-                                                            exp_descr=f"{model.name}_"
-                                                                      f"{''.join([str(p[0]) for p in POOLING_OPS])}",
-                                                            patience=3)
+# model_metadata, model_save_folder = lab.start_training_loop(EPOCHS, model, train_dataset, train_cross_entr_metric,
+#                                                             acc_metric, loss_op,
+#                                                             optimizer,
+#                                                             BATCH_SIZE, val_dataset, val_cross_entr_metric,
+#                                                             task_name=TASK_NAME,
+#                                                             exp_descr=f"{model.name}_"
+#                                                                       f"{''.join([str(p[0]) for p in POOLING_OPS])}",
+#                                                             patience=3)
+
+# model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_MMMM/20201107-202205/model_e_3_bias_0.32_l_0.317_var_0.003"
+# model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_MMME/20201126-004842/model_e_3_bias_0.367_l_0.329_var_0.038"
+# model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EMMM/20201203-002909/model_e_3_bias_0.341_l_0.321_var_0.02"
+# model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EEEE/20201201-175648/model_e_3_bias_0.463_l_0.461_var_0.002"
+model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EMEM/20201205-163419/model_e_2_bias_0.635_l_0.504_var_0.131"
 
 test_predictions = []
 labels_test = []
 model = AlexNet(labels, types_of_poolings=POOLING_OPS, ksizes=None)
-model.load_weights(model_metadata.model_save_path)
-lab.start_testing_loop(test_dataset, model, test_cross_entr_metric, acc_metric, test_predictions, labels_test,
-                       model_metadata, model_save_folder)
-lab.calculate_confusion_matrix(labels[:-1], labels_test, test_predictions, model_save_folder)
+model.load_weights(model_save_path)
+lab.start_testing_loop(test_dataset, model, test_cross_entr_metric, acc_metric, test_predictions, labels_test)
+lab.calculate_confusion_matrix(labels[:-1], labels_test, test_predictions)

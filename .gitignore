@@ -101,3 +101,5 @@ train/
 alexnetstyle.png
 logs/
 results/
+*.tar.gz
+*.zip

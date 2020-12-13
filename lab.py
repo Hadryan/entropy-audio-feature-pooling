@@ -176,8 +176,7 @@ def start_training_loop(num_epochs, model, train_dataset, train_cross_entr_metri
 
 
 def start_testing_loop(test_dataset, model, test_cross_entr_metric, acc_metric, test_predictions, labels_test,
-                       model_metadata, model_save_folder):
-    metadata_save_path = model_save_folder + "metadata.json"
+                       model_metadata=None, model_save_folder=None):
     for x_batch_test, y_batch_test in test_dataset:
         test_logits = model(x_batch_test, training=False)
         test_cross_entr_metric.update_state(y_batch_test, test_logits)
@@ -189,25 +188,28 @@ def start_testing_loop(test_dataset, model, test_cross_entr_metric, acc_metric, 
     test_cross_entr = test_cross_entr_metric.result()
     test_acc = acc_metric.result()
 
-    model_metadata.test_loss = str(test_cross_entr.numpy())
-    model_metadata.test_acc = str(test_acc.numpy())
-    with open(os.path.join(metadata_save_path), 'w') as f:
-        if isinstance(model_metadata, ModelMetadata):
-            json.dump(model_metadata.__dict__, f)
-        else:
-            json.dump(model_metadata, f)
+    if model_metadata and model_save_folder:
+        metadata_save_path = model_save_folder + "metadata.json"
+        model_metadata.test_loss = str(test_cross_entr.numpy())
+        model_metadata.test_acc = str(test_acc.numpy())
+        with open(os.path.join(metadata_save_path), 'w') as f:
+            if isinstance(model_metadata, ModelMetadata):
+                json.dump(model_metadata.__dict__, f)
+            else:
+                json.dump(model_metadata, f)
 
     print(f"Test cross entr: {round(float(test_cross_entr), 3)} and acc: {round(float(test_acc), 3)}")
 
 
-def calculate_confusion_matrix(labels, labels_test, model_save_folder, test_predictions):
+def calculate_confusion_matrix(labels, labels_test, test_predictions, model_save_folder=None):
     print('Confusion Matrix')
     cf = confusion_matrix(labels_test, test_predictions)
     print(cf)
     print('Classification Report')
-    print(classification_report(labels_test, test_predictions, target_names=labels[:-1]))
-    df_cm = pd.DataFrame(cf, labels[:-1], labels[:-1])
+    print(classification_report(labels_test, test_predictions, target_names=labels))
+    df_cm = pd.DataFrame(cf, labels, labels)
     # plt.figure(figsize=(10,7))
     sn.set(font_scale=1.4)  # for label size
     sn.heatmap(df_cm, annot=True)  # font size
-    plt.savefig(model_save_folder + "confusion.png")
+    if model_save_folder:
+        plt.savefig(model_save_folder + "confusion.png")
