@@ -14,8 +14,8 @@ VAL_NOISE = False
 TEST_NOISE = True
 TASK_NAME = f"commands_noise_train_{str(TRAIN_NOISE)[0]}_val_{str(VAL_NOISE)[0]}_test_{str(TEST_NOISE)[0]}"
 POOLING_OPS = [PoolingLayerFactory.MAX,
-               PoolingLayerFactory.MAX,
                PoolingLayerFactory.ENTR,
+               PoolingLayerFactory.MAX,
                PoolingLayerFactory.MAX]
 EPOCHS = 3
 
@@ -101,7 +101,9 @@ print(f"Class name: {model.name}")
 # model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_MMME/20201126-004842/model_e_3_bias_0.367_l_0.329_var_0.038"
 # model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EMMM/20201203-002909/model_e_3_bias_0.341_l_0.321_var_0.02"
 # model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EEEE/20201201-175648/model_e_3_bias_0.463_l_0.461_var_0.002"
-model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EMEM/20201205-163419/model_e_2_bias_0.635_l_0.504_var_0.131"
+# model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_EMEM/20201205-163419/model_e_2_bias_0.635_l_0.504_var_0.131"
+# model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_MMEM/20201206-214919/model_e_3_bias_0.344_l_0.333_var_0.011"
+model_save_path = "logs/commands_noise_train_F_val_F_test_F/checkpoints/alex_net_MEMM/20201210-012901/model_e_3_bias_0.34_l_0.344_var_0.004"
 
 test_predictions = []
 labels_test = []

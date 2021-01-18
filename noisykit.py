@@ -116,6 +116,8 @@ def add_noise(audio, noises=None, scale=0.5, dist="uniform", should_squeeze=True
               f"noise {noise.get_shape()}"
               f"prop {prop.get_shape()}")
         # Adding the rescaled noise to audio
+        # 20log se vasi 10 tou scale
+        # equilize the magnitudes and then adding the factor to noise
         audio = audio + noise * prop * scale
-
     return audio
+

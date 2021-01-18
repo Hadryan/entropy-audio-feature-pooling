@@ -58,7 +58,7 @@ VALID_SPLIT = 0.1
 SHUFFLE_SEED = 43
 SAMPLING_RATE = 16000
 
-SCALE = 0.5 #0.5
+SCALE = 0.25 #0.5
 BATCH_SIZE = 32
 EPOCHS = 100
 TRAIN_NOISE = False
@@ -175,7 +175,7 @@ poolings = [PoolingLayerFactory.MAX, PoolingLayerFactory.ENTR, PoolingLayerFacto
 
 for last in poolings:
     for res in poolings:
-        for i in range(3):
+        for i in range(10):
             print(f"{TASK_NAME}")
             print(f"Running with last pool {last}, resblock pool {res}, time {i}.")
             run_exp(TRAIN_NOISE, VAL_NOISE, TEST_NOISE, last, res,
