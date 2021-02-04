@@ -506,7 +506,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         elif self.pool_type == PoolingLayerFactory.AVG:
             self.pool = AveragePooling1D(pool_size=2, strides=2)
         elif self.pool_type == PoolingLayerFactory.INFO:
-            self.pool = AveragePooling1D(pool_size=2, strides=2)
+            self.pool = InformationPooling2D(pool_size=2, strides=2)
         else:
             self.pool = tf.keras.layers.MaxPool1D(pool_size=2, strides=2)
         super(ResidualBlock, self).build(input_shape)
@@ -523,37 +523,102 @@ class ResidualBlock(tf.keras.layers.Layer):
         x = self.pool(x)
         return x
 
-class InformationPool(Pooling2D):
-    def __init__(self, pool_size, strides=None, padding='valid', data_format=None,
-                  name=None, **kwargs):
-        self.conv2d=tf.keras.layers.Conv2D(pool_size,3,2, activation='relu',padding='valid')
-        self.conv2d2=tf.keras.layers.Conv2D(pool_size,3,2, activation='sigmoid',padding='valid',trainable=False)
-        self.mu=0
-        tf.Variable(initial_value=0,dtype='float64',trainable=True)
-        #self.sigma=1
-        tf.Variable(initial_value=1,dtype='float64',trainable=True)
-        super(InformationPool, self).__init__(
-            self.information_pool,
-            pool_size=pool_size, strides=strides,
-            padding=padding, data_format=data_format, **kwargs)
-    
-    
-    def build(self,input_shape):
-        self.built_input_shape = input_shape
-        self.built_output_shape = self.compute_output_shape(input_shape)
-        super(InformationPool, self).build(input_shape)
-        
-    
-    def sample_lognormal(mean, sigma=None, sigma0=1):
-        '''Samples a log-normal using the reparametrization trick'''
-        e = tf.keras.backend.random_normal(tf.shape(mean), mean=0, stddev=1)
-        return tf.exp(mean + sigma * sigma0 * e)
-
+#class InformationPool(Pooling2D):
+#    def __init__(self, pool_size, strides=None, padding='valid', data_format=None,
+#                 mode='high', name=None, **kwargs):
+#        super(InformationPool, self).__init__(
+#                   self.information_pool,
+#                    pool_size=pool_size, strides=strides,
+#                    padding=padding, data_format=data_format, **kwargs)
+#        self.max_alpha=1
+#        self.lognorm_prior=True
+#        self.conv2d=tf.keras.layers.Conv2D(pool_size,3,2, activation='relu',padding='valid')
+#        self.conv2d2=tf.keras.layers.Conv2D(pool_size,3,2, activation='sigmoid',padding='valid',trainable=False)
+#        
+#       
+#    def build(self, input_shape):
+#        self.built_input_shape = input_shape
+#        self.built_output_shape = self.compute_output_shape(input_shape)
+#      
+#        self.mu=0
+ #       tf.Variable(initial_value=0,dtype='float64',trainable=True)
+#        self.sigma=1
+#       tf.Variable(initial_value=1,dtype='float64',trainable=True)
+#        super(InformationPool, self).build(input_shape)  
+#        
+#    
+#    def sample_lognormal(self,mean, sigma=None, sigma0=1):
+#        '''Samples a log-normal using the reparametrization trick'''
+#        e = tf.keras.backend.random_normal(tf.shape(mean), mean=0, stddev=1)
+#        return tf.exp(mean + sigma * sigma0 * e)
+#
 
   ##  @ex.capture
-    def information_pool(self, inputs, max_alpha=1, lognorm_prior=True, stride=2):
-            network = self.conv2d(inputs)
-            alpha = self.conv2d2(inputs)
+#    def information_pool(self, value, ksize, strides, padding, data_format='NHWC',
+#                  name=None, input=None):
+#            with ops.name_scope(name, "InformationPool", [value]) as name:
+#                value = deprecation.deprecated_argument_lookup(
+#                "input", input, "value", value)
+#            max_alpha=self.max_alpha
+#            lognorm_prior=self.lognorm_prior
+#            network = self.conv2d(value)
+#            alpha = self.conv2d2(value)
+#            alpha = 0.001 + max_alpha * alpha
+#
+ #           if not lognorm_prior:
+ #               kl = - tf.math.log(alpha/(max_alpha + 0.001))
+  #          else:                
+ #               kl = KL_div2(tf.math.log(tf.maximum(network,1e-4)), alpha, self.mu, self.sigma)
+            #tf.compat.v1.add_to_collection('kl_terms', kl)
+ #           e = self.sample_lognormal(mean=tf.zeros_like(network), sigma = alpha )#sigma0 = self.sigma0)
+        # Returns the noisy output of the dropout
+  #          return network * e
+
+    ##@ex.capture
+   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+class InformationPooling2D(Pooling2D):
+    def __init__(self, pool_size, strides=None, padding='valid', data_format=None,
+                 mode='high', name=None, **kwargs):
+        super(InformationPooling2D, self).__init__(
+            self.entr_pool,
+            pool_size=pool_size, strides=strides,
+            padding=padding, data_format=data_format, **kwargs)
+        self.pool_size = pool_size
+
+    def build(self, input_shape):
+        self.built_input_shape = input_shape
+        self.built_output_shape = self.compute_output_shape(input_shape)
+        self.mu=tf.Variable(initial_value=0,dtype='float32',trainable=True)
+        self.sigma=tf.Variable(initial_value=1,dtype='float32',trainable=True)
+        self.max_alpha=1
+        self.lognorm_prior=True
+        self.conv2d=tf.keras.layers.Conv2D(self.pool_size,3,2, activation='relu',padding='valid')
+        self.conv2d2=tf.keras.layers.Conv2D(self.pool_size,3,2, activation='sigmoid',padding='valid',trainable=False)
+        super(InformationPool, self).build(input_shape)
+        
+
+    def information_pool(self, value, ksize, strides, padding, data_format='NHWC',
+                  name=None, input=None):
+            max_alpha=self.max_alpha
+            lognorm_prior=self.lognorm_prior
+            network = self.conv2d(value)
+            alpha = self.conv2d2(value)
             alpha = 0.001 + max_alpha * alpha
 
             if not lognorm_prior:
@@ -565,8 +630,36 @@ class InformationPool(Pooling2D):
         # Returns the noisy output of the dropout
             return network * e
 
-    ##@ex.capture
-   
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     
 
@@ -589,7 +682,7 @@ class PoolingLayerFactory():
                 pool = EntropyPooling2D(pool_size=k)
                 # pool = EntropyPoolLayer()
             elif p==PoolingLayerFactory.INFO:
-                pool= InformationPool(pool_size=k)
+                pool= InformationPooling2D(pool_size=k)
                 
                 #pool=tf.keras.layers.Conv2D(k,3,2,activation='relu')
             else:
