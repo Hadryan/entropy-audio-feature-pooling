@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import tensorflow as tf
 from tensorflow.python.keras.layers import MaxPooling2D, AveragePooling2D, AveragePooling1D, MaxPooling1D
 
-from components import EntropyPoolLayer, EntropyPooling2D, ResidualBlock, EntropyPooling1D, PoolingLayerFactory
+from components import EntropyPoolLayer, EntropyPooling2D, ResidualBlock, EntropyPooling1D, PoolingLayerFactory,InformationPool
 
 
 class AlexNet(tf.keras.Model):
@@ -52,11 +52,15 @@ class AlexNet(tf.keras.Model):
         self.normalization6 = tf.keras.layers.BatchNormalization()
         self.normalization7 = tf.keras.layers.BatchNormalization()
 
-        poolings = PoolingLayerFactory.create_pooling_layers(self.types_of_poolings, self.ksizes)
-        self.pool1 = poolings[0]
-        self.pool2 = poolings[1]
-        self.pool3 = poolings[2]
-        self.pool4 = poolings[3]
+        #poolings = PoolingLayerFactory.create_pooling_layers(self.types_of_poolings, self.ksizes)
+      #  self.pool1 = poolings[0]
+      #  self.pool2 = poolings[1]
+      #  self.pool3 = poolings[2]
+      #  self.pool4 = poolings[3]
+        self.pool1 = InformationPool(32)
+        self.pool2 = InformationPool(64)
+        self.pool3 = InformationPool(128)
+        self.pool4 = InformationPool(256)
 
         self.dense1 = tf.keras.layers.Dense(self.labels.__len__(), activation=None)
         self.flatten = tf.keras.layers.Flatten()

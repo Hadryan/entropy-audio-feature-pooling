@@ -8,7 +8,7 @@ from tensorflow.python.keras.layers.pooling import Pooling2D, Pooling1D, Average
     AveragePooling2D
 from tensorflow.python.ops.nn_ops import _get_sequence
 from tensorflow.python.util import deprecation
-from informationPoolSupport import KL_div,KL_div2,sample_lognormal,batch_average
+from informationPoolSupport import KL_div,KL_div2,batch_average
 
 
 @tf.function
@@ -505,6 +505,8 @@ class ResidualBlock(tf.keras.layers.Layer):
             self.pool = EntropyPooling1D(pool_size=2, strides=2)
         elif self.pool_type == PoolingLayerFactory.AVG:
             self.pool = AveragePooling1D(pool_size=2, strides=2)
+        elif self.pool_type == PoolingLayerFactory.INFO:
+            self.pool = AveragePooling1D(pool_size=2, strides=2)
         else:
             self.pool = tf.keras.layers.MaxPool1D(pool_size=2, strides=2)
         super(ResidualBlock, self).build(input_shape)
@@ -521,109 +523,59 @@ class ResidualBlock(tf.keras.layers.Layer):
         x = self.pool(x)
         return x
 
-class InformationPool(tf.keras.layers.Layer):
-
-    def __init__(self,filters,kernel,stride):
-        super(InformationPool, self).__init__()
-        self.conv2d=tf.keras.layers.Conv2D(filters,kernel,stride, activation='relu',padding='same')
-        self.conv2d2=tf.keras.layers.Conv2D(filters,kernel,stride, activation='sigmoid',padding='same',trainable=False)
-        self.mu=tf.Variable(initial_value=0,dtype='float32',trainable=True)
-        self.sigma=tf.Variable(initial_value=1,dtype='float32',trainable=True)
-        #self.keep_prob = tf.placeholder(tf.float32, shape=[]) 
-       # self.initial_keep_prob = tf.placeholder(tf.float32, shape=[]) 
-      #  self.sigma0 = tf.placeholder(tf.float32, shape=[])
+class InformationPool(Pooling2D):
+    def __init__(self, pool_size, strides=None, padding='valid', data_format=None,
+                  name=None, **kwargs):
+        self.conv2d=tf.keras.layers.Conv2D(pool_size,3,2, activation='relu',padding='valid')
+        self.conv2d2=tf.keras.layers.Conv2D(pool_size,3,2, activation='sigmoid',padding='valid',trainable=False)
+        self.mu=0
+        tf.Variable(initial_value=0,dtype='float64',trainable=True)
+        #self.sigma=1
+        tf.Variable(initial_value=1,dtype='float64',trainable=True)
+        super(InformationPool, self).__init__(
+            self.information_pool,
+            pool_size=pool_size, strides=strides,
+            padding=padding, data_format=data_format, **kwargs)
     
-   # def build(self):
-    #    '''Creates the placeholders for this model'''
-     #   self.keep_prob = tf.placeholder(tf.float32, shape=[]) 
-      #  self.initial_keep_prob = tf.placeholder(tf.float32, shape=[]) 
-       # self.sigma0 = tf.placeholder(tf.float32, shape=[])
+    
+    def build(self,input_shape):
+        self.built_input_shape = input_shape
+        self.built_output_shape = self.compute_output_shape(input_shape)
+        super(InformationPool, self).build(input_shape)
         
-        
+    
+    def sample_lognormal(mean, sigma=None, sigma0=1):
+        '''Samples a log-normal using the reparametrization trick'''
+        e = tf.keras.backend.random_normal(tf.shape(mean), mean=0, stddev=1)
+        return tf.exp(mean + sigma * sigma0 * e)
 
-   ## @ex.capture
-    def conv(self, inputs, num_outputs, activations='relu', kernel_size=3, stride=1, scope=None):
-        '''Creates a convolutional layer with default arguments'''
-        if activations == 'relu':
-            activation_fn = tf.nn.relu
-        elif activations == 'softplus':
-            activation_fn = tf.nn.softplus
-        else:
-            raise ValueError("Invalid activation function.")
-        return self.conv2d( inputs = inputs
-            #num_outputs = num_outputs,
-            #kernel_size = kernel_size,
-            #stride = stride,
-            #padding = 'SAME',
-            #activation = activation_fn,
-            #normalizer = BatchNormalization,
-            #scope=scope )
-            )
 
   ##  @ex.capture
-    def information_pool(self, inputs, max_alpha=1, alpha_mode='information', lognorm_prior=True, num_outputs=None, stride=2, scope=None):
-          
-        # Creates the output convolutional layer
-        network = self.conv(inputs, num_outputs=int(num_outputs), stride=stride)
-        with tf.compat.v1.variable_scope(scope,'information_dropout'):
-            # Computes the noise parameter alpha for the output
-            #K.print_tensor(tf.constant(2))
-            alpha = self.conv2d2(inputs
-                                 #num_outputs=int(num_outputs),
-                                 #kernel_size=3,
-               # stride=stride,
-               # activation=tf.sigmoid,
-                #scope='alpha')
-                )
-            # Rescale alpha in the allowed range and add a small value for numerical stability
+    def information_pool(self, inputs, max_alpha=1, lognorm_prior=True, stride=2):
+            network = self.conv2d(inputs)
+            alpha = self.conv2d2(inputs)
             alpha = 0.001 + max_alpha * alpha
-            # Computes the KL divergence using either log-uniform or log-normal prior
+
             if not lognorm_prior:
                 kl = - tf.math.log(alpha/(max_alpha + 0.001))
-            else:
-                #mu1 = tf.compat.v1.get_variable('mu1', [], initializer=tf.constant_initializer(0.))
-                #sigma1 = tf.compat.v1.get_variable('sigma1', [], initializer=tf.constant_initializer(1.))
-                
+            else:                
                 kl = KL_div2(tf.math.log(tf.maximum(network,1e-4)), alpha, self.mu, self.sigma)
-            tf.compat.v1.add_to_collection('kl_terms', kl)
-        # Samples the noise with the given parameter
-        e = sample_lognormal(mean=tf.zeros_like(network), sigma = alpha )#sigma0 = self.sigma0)
+            #tf.compat.v1.add_to_collection('kl_terms', kl)
+            e = self.sample_lognormal(mean=tf.zeros_like(network), sigma = alpha )#sigma0 = self.sigma0)
         # Returns the noisy output of the dropout
-        return network * e
+            return network * e
 
     ##@ex.capture
-    def conv_dropout(self, inputs, num_outputs, dropout):
-        if dropout == 'information':
-            network = self.information_pool(inputs, num_outputs=num_outputs)
-        elif dropout == 'binary':
-            network = self.conv(inputs, num_outputs, stride=2)
-            network = tf.nn.dropout(network, self.keep_prob)
-        elif dropout == 'none':
-            network = self.conv2d(inputs)
-        else:
-            raise ValueError("Invalid dropout value")
-        return network
+   
     
-    def call(self,inputs,dropout='information'):
-      return  self.conv_dropout(inputs,inputs.shape[0],dropout)
+    
 
-information_pool_custom_loss_basic_keras=tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-def information_pool_custom_loss(y_true, y_pred):
-            
-     loss=information_pool_custom_loss_basic_keras(y_true,y_pred)
-     kl_terms = [ batch_average(kl) for kl in tf.compat.v1.get_collection('kl_terms') ]
-     kl_terms=tf.math.add_n(kl_terms)/(257*98*32*2)
-     loss=loss + 0.5*kl_terms
-     
-
-        
-     return loss
- 
 
 class PoolingLayerFactory():
     MAX = "MAX"
     AVG = "AVG"
     ENTR = "ENTR"
+    INFO = "INFO"
 
     @staticmethod
     def create_pooling_layers(types_of_poolings: List[str], ksizes: List[Tuple]) -> List:
@@ -636,6 +588,10 @@ class PoolingLayerFactory():
             elif p == PoolingLayerFactory.ENTR:
                 pool = EntropyPooling2D(pool_size=k)
                 # pool = EntropyPoolLayer()
+            elif p==PoolingLayerFactory.INFO:
+                pool= InformationPool(pool_size=k)
+                
+                #pool=tf.keras.layers.Conv2D(k,3,2,activation='relu')
             else:
                 pool = MaxPooling2D(pool_size=k)
             pools.append(pool)
