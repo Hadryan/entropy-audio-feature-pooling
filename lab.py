@@ -9,10 +9,23 @@ import pandas as pd
 import seaborn as sn
 import tensorflow as tf
 import numpy as np
+from informationPoolSupport import batch_average
 
 
+information_pool_custom_loss_basic_keras=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+def information_pool_custom_loss(y_true, y_pred):
+            
+     loss=information_pool_custom_loss_basic_keras(y_true,y_pred)
+     #kl_terms = [ batch_average(kl) for kl in tf.compat.v1.get_collection('kl_terms') ]
+     #kl_terms=tf.math.add_n(kl_terms)/(257*98*32*2)
+     #loss=loss + 0.5*kl_terms
+     
+
+        
+     return loss
 def setup_ops(from_logits=True):
-    loss_op = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=from_logits)
+#    loss_op = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=from_logits)
+    loss_op=information_pool_custom_loss 
     learning_rate = tf.optimizers.schedules.ExponentialDecay(1e-3, 10000, 0.99, staircase=from_logits)
     optimizer = tf.optimizers.Adam(learning_rate=learning_rate, clipvalue=15)
     train_cross_entr_metric = tf.keras.metrics.SparseCategoricalCrossentropy(from_logits=from_logits)
