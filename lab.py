@@ -16,9 +16,9 @@ information_pool_custom_loss_basic_keras=tf.keras.losses.SparseCategoricalCrosse
 def information_pool_custom_loss(y_true, y_pred):
             
      loss=information_pool_custom_loss_basic_keras(y_true,y_pred)
-     #kl_terms = [ batch_average(kl) for kl in tf.compat.v1.get_collection('kl_terms') ]
-     #kl_terms=tf.math.add_n(kl_terms)/(257*98*32*2)
-     #loss=loss + 0.5*kl_terms
+     kl_terms = [ batch_average(kl) for kl in tf.compat.v1.get_collection('kl_terms') ]
+     kl_terms=tf.math.add_n(kl_terms)/(257*98*32*2)
+     loss=loss + 0.5*kl_terms
      
 
         
