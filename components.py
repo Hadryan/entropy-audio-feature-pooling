@@ -506,7 +506,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         elif self.pool_type == PoolingLayerFactory.AVG:
             self.pool = AveragePooling1D(pool_size=2, strides=2)
         elif self.pool_type == PoolingLayerFactory.INFO:
-            self.pool = InformationPooling2D(pool_size=2, strides=2)
+            self.pool = InformationPooling1D(pool_size=2,conv=self.filters)
         else:
             self.pool = tf.keras.layers.MaxPool1D(pool_size=2, strides=2)
         super(ResidualBlock, self).build(input_shape)
@@ -622,6 +622,42 @@ class InformationPooling2D(tf.keras.layers.Layer):
     
     
     
+class InformationPooling1D(tf.keras.layers.Layer):
+    def __init__(self, pool_size,conv, **kwargs):
+        super(InformationPooling1D, self).__init__(**kwargs)
+        self.pool_size = conv
+        self.mu=tf.Variable(initial_value=0,dtype='float32',trainable=True)
+        self.sigma=tf.Variable(initial_value=1,dtype='float32',trainable=True)
+        self.max_alpha=1
+        self.lognorm_prior=True
+        self.conv2d=tf.keras.layers.Conv1D(conv,kernel_size=3,strides=2, activation='relu',padding='valid')
+        self.conv2d2=tf.keras.layers.Conv1D(conv,kernel_size=3,strides=2, activation='sigmoid',padding='valid',trainable=False)
+
+
+    
+    def call(self,inputs):
+            max_alpha=self.max_alpha
+            lognorm_prior=self.lognorm_prior
+            network = self.conv2d(inputs)
+            alpha = self.conv2d2(inputs)
+            alpha = 0.001 + max_alpha * alpha
+
+            if not lognorm_prior:
+                kl = - tf.math.log(alpha/(max_alpha + 0.001))
+            else:                
+                kl = KL_div2(tf.math.log(tf.maximum(network,1e-4)), alpha, self.mu, self.sigma)
+            klloss=batch_average(kl)
+            self.add_loss(klloss)
+            net=tf.zeros_like(network)
+            sigma0 =1
+            e1= tf.keras.backend.random_normal(tf.shape(net), mean=0, stddev=1)
+            e=tf.exp(net + alpha * sigma0 * e1)
+        # Returns the noisy output of the dropout
+            return network * e
+    
+    
+    
+
 
 
 

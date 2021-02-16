@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import tensorflow as tf
 from tensorflow.python.keras.layers import MaxPooling2D, AveragePooling2D, AveragePooling1D, MaxPooling1D
 
-from components import EntropyPoolLayer, EntropyPooling2D, ResidualBlock, EntropyPooling1D, PoolingLayerFactory,InformationPooling2D
+from components import EntropyPoolLayer, EntropyPooling2D, ResidualBlock, EntropyPooling1D, PoolingLayerFactory,InformationPooling2D,InformationPooling1D
 
 
 class AlexNet(tf.keras.Model):
@@ -150,8 +150,10 @@ class ResidualModel(tf.keras.Model):
             self.pool = EntropyPooling1D(pool_size=3, strides=3)
         elif self.last_pool == PoolingLayerFactory.AVG:
             self.pool = AveragePooling1D(pool_size=3, strides=3)
-        else:
+        elif self.last_pool == PoolingLayerFactory.MAX:
             self.pool = MaxPooling1D(pool_size=3, strides=3)
+        else:
+            self.pool = InformationPooling1D(pool_size=3,conv=128)
 
         self.flatten = tf.keras.layers.Flatten()
         self.dense1 = tf.keras.layers.Dense(256, activation="relu")

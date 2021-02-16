@@ -16,11 +16,11 @@ TRAIN_NOISE = False
 VAL_NOISE = False
 TEST_NOISE = False
 TASK_NAME = f"commands_noise_train_{str(TRAIN_NOISE)[0]}_val_{str(VAL_NOISE)[0]}_test_{str(TEST_NOISE)[0]}"
-POOLING_OPS = [PoolingLayerFactory.INFO,
-               PoolingLayerFactory.INFO,
-               PoolingLayerFactory.INFO,
-               PoolingLayerFactory.INFO]
-EPOCHS = 1
+POOLING_OPS = [PoolingLayerFactory.ENTR,
+               PoolingLayerFactory.MAX,
+               PoolingLayerFactory.MAX,
+               PoolingLayerFactory.MAX]
+EPOCHS = 9
 
 
 def prepare_data(batch_size, train_noise, val_noise, test_noise):
