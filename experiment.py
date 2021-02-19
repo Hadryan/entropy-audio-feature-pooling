@@ -8,7 +8,7 @@ from models import AlexNet, PoolingLayerFactory
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 PREFETCH = 10 * BATCH_SIZE
 SHUFFLE_SEED = 43
 SCALE = 2
@@ -17,9 +17,9 @@ VAL_NOISE = False
 TEST_NOISE = False
 TASK_NAME = f"commands_noise_train_{str(TRAIN_NOISE)[0]}_val_{str(VAL_NOISE)[0]}_test_{str(TEST_NOISE)[0]}"
 POOLING_OPS = [PoolingLayerFactory.INFO,
-               PoolingLayerFactory.INFO,
-               PoolingLayerFactory.INFO,
-               PoolingLayerFactory.INFO]
+               PoolingLayerFactory.MAX,
+               PoolingLayerFactory.MAX,
+               PoolingLayerFactory.MAX]
 EPOCHS = 1
 
 
