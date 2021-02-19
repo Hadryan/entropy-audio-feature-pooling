@@ -17,15 +17,15 @@ def information_pool_custom_loss(y_true, y_pred):
             
      loss=information_pool_custom_loss_basic_keras(y_true,y_pred)
      kl_terms = [ batch_average(kl) for kl in tf.compat.v1.get_collection('kl_terms') ]
-     kl_terms=tf.math.add_n(kl_terms)/(257*98*32*2)
+     kl_terms=tf.math.add_n(kl_terms)/(257*98*32)
      loss=loss + 0.5*kl_terms
      
 
         
      return loss
 def setup_ops(from_logits=True):
-    #loss_op = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=from_logits)
-    loss_op=information_pool_custom_loss 
+    loss_op = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=from_logits)
+    #loss_op=information_pool_custom_loss 
     learning_rate = tf.optimizers.schedules.ExponentialDecay(1e-3, 10000, 0.99, staircase=from_logits)
     optimizer = tf.optimizers.Adam(learning_rate=learning_rate, clipvalue=15)
     train_cross_entr_metric = tf.keras.metrics.SparseCategoricalCrossentropy(from_logits=from_logits)
@@ -39,6 +39,7 @@ def train_step(training_model, inputs, y_batch_train, cross_entr, acc, loss_op, 
     with tf.GradientTape() as tape:
         logit = training_model(inputs, training=True)
         current_loss = loss_op(y_batch_train, logit)
+        current_loss=current_loss + tf.math.add_n(training_model.losses)
     grads = tape.gradient(current_loss, training_model.trainable_weights)
     grads = [grad if grad is not None else tf.zeros_like(var)
              for var, grad in zip(training_model.trainable_variables, grads)]
