@@ -39,7 +39,9 @@ def train_step(training_model, inputs, y_batch_train, cross_entr, acc, loss_op, 
     with tf.GradientTape() as tape:
         logit = training_model(inputs, training=True)
         current_loss = loss_op(y_batch_train, logit)
-        current_loss=current_loss + tf.math.add_n(training_model.losses)
+        added_losses=training_model.losses
+        if added_losses :
+            current_loss=current_loss + tf.math.add_n(added_losses)
     grads = tape.gradient(current_loss, training_model.trainable_weights)
     grads = [grad if grad is not None else tf.zeros_like(var)
              for var, grad in zip(training_model.trainable_variables, grads)]
