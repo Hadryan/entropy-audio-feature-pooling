@@ -17,12 +17,12 @@ VAL_NOISE = False
 TEST_NOISE = False
 TASK_NAME = f"commands_noise_train_{str(TRAIN_NOISE)[0]}_val_{str(VAL_NOISE)[0]}_test_{str(TEST_NOISE)[0]}"
 POOLING_OPS = [PoolingLayerFactory.MAX,
-               PoolingLayerFactory.INFO,
                PoolingLayerFactory.MAX,
+               PoolingLayerFactory.INFO,
                PoolingLayerFactory.MAX]
 EPOCHS = 3
 
-
+print(tf.__version__)
 def prepare_data(batch_size, train_noise, val_noise, test_noise):
     labels = 'yes no up down left right on off stop go silence unknown'.split()
     train_files_labels, val_files_labels, test_files_labels = dt.get_filenames_of_train_val_test_sets('', labels)

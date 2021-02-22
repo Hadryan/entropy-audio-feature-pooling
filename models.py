@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import tensorflow as tf
 from tensorflow.python.keras.layers import MaxPooling2D, AveragePooling2D, AveragePooling1D, MaxPooling1D
 
-from components import EntropyPoolLayer, EntropyPooling2D, ResidualBlock, EntropyPooling1D, PoolingLayerFactory,InformationPooling2D,InformationPooling1D
+from components import EntropyPoolLayer, EntropyPooling2D, ResidualBlock, EntropyPooling1D, PoolingLayerFactory,InformationPooling2D,InformationPooling1D,InformationPooling1DPure
 
 
 class AlexNet(tf.keras.Model):
@@ -117,7 +117,7 @@ class AlexNet(tf.keras.Model):
         x = self.flatten(x)
         x = self.dense1(x)
         x = self.normalization7(x)
-
+        
         return x
 
 
@@ -141,8 +141,12 @@ class ResidualModel(tf.keras.Model):
     def build(self, input_shape):
         print(f"build is called with input shape {input_shape}")
         multitude=5
-        if self.last_pool == PoolingLayerFactory.INFO :
+        if self.last_pool == PoolingLayerFactory.INFO and self.resblock_pool == PoolingLayerFactory.INFO :
             multitude=6
+        elif self.last_pool == PoolingLayerFactory.INFO :
+            multitude=1
+        else :
+            multitude=5
         self.residual_block1 = ResidualBlock(16, 2,multitude=multitude)
         self.residual_block2 = ResidualBlock(32, 2,multitude=multitude)
         self.residual_block3 = ResidualBlock(64, 3,multitude=multitude)
@@ -155,8 +159,10 @@ class ResidualModel(tf.keras.Model):
             self.pool = AveragePooling1D(pool_size=3, strides=3)
         elif self.last_pool == PoolingLayerFactory.MAX:
             self.pool = MaxPooling1D(pool_size=3, strides=3)
+        elif self.last_pool == PoolingLayerFactory.INFOP:
+            self.pool = InformationPooling1DPure(pool_size=3,conv=128)
         else:
-            self.pool = InformationPooling1D(pool_size=3,conv=128,multitude_regularizer=6)
+            self.pool = InformationPooling1D(pool_size=3,conv=128,multitude_regularizer=multitude)
 
         self.flatten = tf.keras.layers.Flatten()
         self.dense1 = tf.keras.layers.Dense(256, activation="relu")

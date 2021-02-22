@@ -509,6 +509,8 @@ class ResidualBlock(tf.keras.layers.Layer):
             self.pool = AveragePooling1D(pool_size=2, strides=2)
         elif self.pool_type == PoolingLayerFactory.INFO:
             self.pool = InformationPooling1D(pool_size=2,conv=self.filters,multitude_regularizer=self.multitude)
+        elif self.pool_type == PoolingLayerFactory.INFOP:
+            self.pool = InformationPooling1DPure(pool_size=2,conv=self.filters)
         else:
             self.pool = tf.keras.layers.MaxPool1D(pool_size=2, strides=2)
         super(ResidualBlock, self).build(input_shape)
@@ -605,11 +607,12 @@ class InformationPooling2D(tf.keras.layers.Layer):
 
     
     def call(self,inputs,max_alpha=1,lognorm_prior=True):
-            n,h,w,c= [d for d in inputs.shape]
+            
             network = self.conv2d(inputs)
+            n,h,w,c= [d for d in network.shape]
             alpha = self.conv2d2(inputs)
             alpha = 0.001 + max_alpha * alpha
-
+            
             if not lognorm_prior:
                 kl = - tf.math.log(alpha/(max_alpha + 0.001))
             else:                
@@ -628,6 +631,65 @@ class InformationPooling2D(tf.keras.layers.Layer):
         
             return network * e
     
+
+
+
+
+class InformationPooling2DP(tf.keras.layers.Layer):
+    def __init__(self,pool_size,conv,beta_adjusted,**kwargs):
+        super(InformationPooling2D, self).__init__(**kwargs)
+        self.beta_adjusted=beta_adjusted
+        
+        self.filters=conv
+        self.kernel_size,self.strides=pool_size
+        self.kernel_size=self.kernel_size + 1
+        self.mu=tf.Variable(initial_value=0,dtype='float32',trainable=True)
+        self.sigma=tf.Variable(initial_value=1,dtype='float32',trainable=True)
+        self.conv2d=tf.keras.layers.Conv2D(self.filters,kernel_size=3,strides=2, activation='relu',padding='valid')
+        self.conv2d2=tf.keras.layers.Conv2D(self.filters,kernel_size=3,strides=2, activation='sigmoid',padding='valid',trainable=False)
+
+
+    
+    def call(self,inputs,max_alpha=1,lognorm_prior=True):
+            
+            network = self.conv2d(inputs)
+            n,h,w,c= [d for d in network.shape]
+            alpha = self.conv2d2(inputs)
+            alpha = 0.001 + max_alpha * alpha
+            
+            if not lognorm_prior:
+                kl = - tf.math.log(alpha/(max_alpha + 0.001))
+            else:                
+                kl = KL_div2(tf.math.log(tf.maximum(network,1e-4)), alpha, self.mu, self.sigma)
+                
+            klloss=batch_average(kl)
+            klloss=klloss/(h*w*c)
+        
+            klloss=klloss*self.beta_adjusted
+            
+            self.add_loss(klloss)
+            net=tf.zeros_like(network)
+            sigma0 =1
+            e1= tf.keras.backend.random_normal(tf.shape(net), mean=0, stddev=1)
+            e=tf.exp(net + alpha * sigma0 * e1)
+        
+            return network * e
+    
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     
 class InformationPooling1D(tf.keras.layers.Layer):
@@ -670,9 +732,9 @@ class InformationPooling1D(tf.keras.layers.Layer):
             return network * e
     
     
-class InformationPooling1DTrue(tf.keras.layers.Layer):
-    def __init__(self,pool_size,conv,beta_adjusted=0.5,**kwargs):
-        super(InformationPooling1DTrue, self).__init__(**kwargs)
+class InformationPooling1DPure(tf.keras.layers.Layer):
+    def __init__(self,pool_size,conv,beta_adjusted=0.125,**kwargs):
+        super(InformationPooling1DPure, self).__init__(**kwargs)
         self.beta_adjusted=beta_adjusted
         
         self.filters=conv
@@ -747,6 +809,7 @@ class PoolingLayerFactory():
     AVG = "AVG"
     ENTR = "ENTR"
     INFO = "INFO"
+    INFOP = "INFOP"
 
     @staticmethod
     def create_pooling_layers(types_of_poolings: List[str], ksizes: List[Tuple], convolution_list: List[int]) -> List:
@@ -760,8 +823,9 @@ class PoolingLayerFactory():
                 pool = EntropyPooling2D(pool_size=k)
                 # pool = EntropyPoolLayer()
             elif p==PoolingLayerFactory.INFO:
-                pool= InformationPooling2D(pool_size=k,conv=c,beta_adjusted=0.5,multitude_regularizer=3)
-                
+                pool= InformationPooling2D(pool_size=k,conv=c,beta_adjusted=0.125,multitude_regularizer=1)
+            elif p==PoolingLayerFactory.INFOP:
+                pool= InformationPooling2DP(pool_size=k,conv=c,beta_adjusted=0.125)   
                 #pool=tf.keras.layers.Conv2D(k,3,2,activation='relu')
             else:
                 pool = MaxPooling2D(pool_size=k)

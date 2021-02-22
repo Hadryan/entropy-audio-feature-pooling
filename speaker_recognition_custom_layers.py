@@ -171,8 +171,8 @@ def run_exp(train_noise, val_noise, test_noise, last_pool, resblock_pool,
     lab.calculate_confusion_matrix(class_names, labels_test, test_predictions, model_save_folder)
 
 
-poolings = [PoolingLayerFactory.MAX,PoolingLayerFactory.INFO]
-
+poolings = [PoolingLayerFactory.MAX,PoolingLayerFactory.INFO,PoolingLayerFactory.AVG]
+#poolings = [PoolingLayerFactory.MAX,PoolingLayerFactory.INFOP,PoolingLayerFactory.AVG]
 for last in poolings:
     for res in poolings:
         for i in range(10):
