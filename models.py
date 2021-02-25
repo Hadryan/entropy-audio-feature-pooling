@@ -130,7 +130,7 @@ class ResidualModel(tf.keras.Model):
         self.resblock_pool = resblock_pool
 
     def build_graph(self):
-        x = tf.keras.layers.Input(shape=(32, 8000, 1))
+        x = tf.keras.layers.Input(shape=(8000,1))
         return tf.keras.Model(inputs=[x], outputs=self.call(x, ))
 
     def get_config(self):
